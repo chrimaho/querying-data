@@ -26,10 +26,10 @@ repos:
       - id: debug-statements
         language_version: python3
 
-      # Git fixes
-      - id: no-commit-to-branch
-        args:
-          - "--branch=main"
+      # # Git fixes
+      # - id: no-commit-to-branch
+      #   args:
+      #     - "--branch=main"
 
   # Linter
   - repo: https://github.com/psf/black
@@ -44,11 +44,11 @@ repos:
     hooks:
       - id: blacken-docs
         additional_dependencies:
-          - "black>=23.3"
+          - "black>=25.0"
 
   # Run MyPy type checks
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.15.0"
+    rev: "v1.16.0"
     hooks:
       - id: mypy
         files: src/dealing_with_missing_data
@@ -95,7 +95,7 @@ repos:
 
   # Check uv configs
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: "0.7.8"
+    rev: "0.7.12"
     hooks:
       - id: uv-lock
       - id: uv-sync
@@ -118,8 +118,8 @@ repos:
           - "-sn" # Don't display the score
 
       # Check UV configs
-      - id: uv-lock-sync
-        name: uv lock & sync
-        entry: make uv-lock-sync
+      - id: uv-sync
+        name: uv sync
+        entry: uv sync --link-mode=copy --all-groups
         language: system
         pass_filenames: false
