@@ -91,7 +91,6 @@ test = [
 
 [tool.black]
 color = true
-line-length = 120
 exclude = '''
 /(
     \.git
@@ -136,11 +135,11 @@ disable_error_code = [
 ]
 
 [tool.isort]
-import_heading_future = "## Future Python Library Imports ----"
-import_heading_stdlib = "## Python StdLib Imports ----"
-import_heading_thirdparty = "## Python Third Party Imports ----"
-import_heading_firstparty = "## Local First Party Imports ----"
-import_heading_localfolder = "## Local Module Imports ----"
+import_heading_future = "Future Python Library Imports"
+import_heading_stdlib = "Python StdLib Imports"
+import_heading_thirdparty = "Python Third Party Imports"
+import_heading_firstparty = "Local First Party Imports"
+import_heading_localfolder = "Local Module Imports"
 profile = "black"
 split_on_trailing_comma = true
 combine_as_imports = true
