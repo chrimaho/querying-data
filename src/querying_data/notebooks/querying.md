@@ -1,21 +1,29 @@
 # Querying Data Blog Article
+
+
 ### Querying Data: A Comprehensive Guide with Pandas, SQL, PySpark, and Polars
 
+
 Working as a Data Scientist or Data Engineer often involves querying data from various sources. There are many tools and libraries available to perform these tasks, each with its own strengths and weaknesses. Also, there are many different ways to achieve similar results, depending on the tool or library used. It's important to be familiar with these different methods to choose the best one for your specific use case.
+
 
 This article provides a comprehensive guide on how to query data using different tools and libraries, including Pandas, SQL, PySpark, and Polars. Each section will cover the setup, data creation, and various querying techniques such as filtering, grouping, joining, window functions, ranking, and sorting. The output will be identical across all tools, but the transformations will be implemented using the specific syntax and features of each library. Therefore allowing you to compare the different approaches and understand the nuances of each method.
 
 
 ## Setup
 
+
 Before we start querying data, we need to set up our environment. This includes importing the necessary libraries, creating sample data, and defining constants that will be used throughout the article. The following sections will guide you through this setup process. The code for this article is also available on GitHub: [querying-data](...).
 
 
 ### Imports
 
-```py
+```python
 # Import required libraries
+# ## Python StdLib Imports ----
 import sqlite3
+
+# ## Python Third Party Imports ----
 import numpy as np
 import pandas as pd
 import polars as pl
@@ -26,17 +34,19 @@ from pyspark.sql import SparkSession, functions as F
 
 ### Constants
 
-```py
+```python
 # Set seed for reproducibility
 np.random.seed(42)
 ```
 
 ### Data
 
-```py
+```python
 # Generate sample data
 n_records = 1000
+```
 
+```python
 # Create sales fact table
 sales_data: dict[str, str] = {
     "date": pd.date_range(start="2023-01-01", periods=n_records, freq="D"),
@@ -48,7 +58,9 @@ sales_data: dict[str, str] = {
     "sales_amount": np.random.uniform(10, 1000, n_records).round(2),
     "quantity": np.random.randint(1, 10, n_records),
 }
+```
 
+```python
 # Create product dimension table
 product_data: dict[str, str] = {
     "product_id": np.arange(1, 50),
@@ -59,7 +71,9 @@ product_data: dict[str, str] = {
     ),
     "supplier_id": np.random.randint(1, 10, 50),
 }
+```
 
+```python
 # Create customer dimension table
 customer_data: dict[str, str] = {
     "customer_id": np.arange(1, 100),
@@ -72,48 +86,49 @@ customer_data: dict[str, str] = {
 }
 ```
 
-
 ## Pandas
 
 
 ### Create
 
-```py
+```python
 df_sales_pd = pd.DataFrame(sales_data)
 df_product_pd = pd.DataFrame(product_data)
 df_customer_pd = pd.DataFrame(customer_data)
 ```
 
-```py
+```python
 print("Pandas DataFrame:")
 print(df_sales_pd.head(10))
 print(df_product_pd.head(10))
 print(df_customer_pd.head(10))
 ```
 
-
 ### 1. Filtering and Selecting
 
-```py
+```python
 # Filter sales data for specific category
 electronics_sales: pd.DataFrame = df_sales_pd[df_sales_pd["category"] == "Electronics"]
 print(f"Number of Electronics Sales: {len(electronics_sales)}")
 display(electronics_sales.head())
+```
 
+```python
 # Filter for high value transactions (over $500)
 high_value_sales: pd.DataFrame = df_sales_pd[df_sales_pd["sales_amount"] > 500]
 print(f"Number of high-value Sales: {len(high_value_sales)}")
 display(high_value_sales.head())
+```
 
+```python
 # Select specific columns
 sales_summary: pd.DataFrame = df_sales_pd[["date", "category", "sales_amount"]]
 display(sales_summary.head())
 ```
 
-
 ### 2. Grouping and Aggregation
 
-```py
+```python
 # Basic aggregation
 sales_stats: pd.DataFrame = df_sales_pd.agg(
     {
@@ -122,7 +137,9 @@ sales_stats: pd.DataFrame = df_sales_pd.agg(
     }
 )
 display(sales_stats)
+```
 
+```python
 # Group by category and aggregate
 category_sales: pd.DataFrame = df_sales_pd.groupby("category").agg(
     {
@@ -131,7 +148,9 @@ category_sales: pd.DataFrame = df_sales_pd.groupby("category").agg(
     }
 )
 display(category_sales)
+```
 
+```python
 # Rename columns for clarity
 category_sales.columns = [
     "total_sales",
@@ -140,7 +159,9 @@ category_sales.columns = [
     "total_quantity",
 ]
 display("Category Sales Summary:")
+```
 
+```python
 # Plot the results
 fig: go.Figure = px.bar(
     category_sales.reset_index(),
@@ -153,10 +174,9 @@ fig: go.Figure = px.bar(
 fig.show()
 ```
 
-
 ### 3. Joining
 
-```py
+```python
 # Join sales with product data
 sales_with_product: pd.DataFrame = pd.merge(
     df_product_pd,
@@ -165,7 +185,9 @@ sales_with_product: pd.DataFrame = pd.merge(
     how="left",
 )
 display(sales_with_product.head())
+```
 
+```python
 # Join with customer information to get a complete view
 complete_sales: pd.DataFrame = pd.merge(
     sales_with_product,
@@ -174,7 +196,9 @@ complete_sales: pd.DataFrame = pd.merge(
     how="left",
 )
 display(complete_sales.head())
+```
 
+```python
 # Calculate revenue (price * quantity) and compare with sales amount
 complete_sales["calculated_revenue"] = (
     complete_sales["price"] * complete_sales["quantity"]
@@ -189,34 +213,40 @@ display(
 )
 ```
 
-
 ### 4. Window Functions
 
-```py
+```python
 # Time-based window function
 df_sales_pd["date"] = pd.to_datetime(df_sales_pd["date"])  # Ensure date type
 daily_sales: pd.DataFrame = (
     df_sales_pd.groupby(df_sales_pd["date"].dt.date).sum().reset_index()
 )
 daily_sales = daily_sales.sort_values("date")
+```
 
+```python
 # Calculate rolling averages (7-day moving average)
 daily_sales["7d_moving_avg"] = (
     daily_sales["sales_amount"].rolling(window=7, min_periods=1).mean()
 )
+```
 
+```python
 # Calculate lag and lead
 daily_sales["previous_day_sales"] = daily_sales["sales_amount"].shift(1)
 daily_sales["next_day_sales"] = daily_sales["sales_amount"].shift(-1)
+```
 
+```python
 # Calculate day-over-day change
 daily_sales["day_over_day_change"] = (
     daily_sales["sales_amount"].pct_change() - daily_sales["previous_day_sales"]
 )
 daily_sales["pct_change"] = daily_sales["sales_amount"].pct_change() * 100
-
 display(daily_sales.head())
+```
 
+```python
 # Plot time series with rolling average
 fig = go.Figure()
 fig.add_trace(
@@ -244,10 +274,9 @@ fig.update_layout(
 fig.show()
 ```
 
-
 ### 5. Ranking and Partitioning
 
-```py
+```python
 # Rank customers by total spending
 customer_spending: pd.DataFrame = (
     df_sales_pd.groupby("customer_id")["sales_amount"].sum().reset_index()
@@ -256,7 +285,9 @@ customer_spending["rank"] = customer_spending["sales_amount"].rank(
     method="dense", ascending=False
 )
 customer_spending = customer_spending.sort_values("rank")
+```
 
+```python
 # Add customer details
 top_customers: pd.DataFrame = pd.merge(
     customer_spending,
@@ -265,7 +296,9 @@ top_customers: pd.DataFrame = pd.merge(
     how="left",
 )
 display(top_customers.head(10))
+```
 
+```python
 # Rank products by quantity sold
 product_popularity: pd.DataFrame = (
     df_sales_pd.groupby("product_id")["quantity"].sum().reset_index()
@@ -274,7 +307,9 @@ product_popularity["rank"] = product_quantity["quantity"].rank(
     method="dense", ascending=False
 )
 product_popularity = product_quantity.sort_values("rank")
+```
 
+```python
 # Add product details
 top_products: pd.DataFrame = pd.merge(
     product_popularity,
@@ -285,13 +320,12 @@ top_products: pd.DataFrame = pd.merge(
 display(top_products.head(10))
 ```
 
-
 ## SQL
 
 
 ### Create
 
-```py
+```python
 # Creates SQLite database and tables
 conn: sqlite.Connection = sqlite3.connect(":memory:")
 
@@ -300,7 +334,7 @@ df_product_pd.to_sql("product", conn, index=False, if_exists="replace")
 df_customer_pd.to_sql("customer", conn, index=False, if_exists="replace")
 ```
 
-```py
+```python
 # Verify SQL Connection
 print("SQL Data:")
 display(pd.read_sql("SELECT * FROM sales LIMIT 5", conn))
@@ -308,20 +342,21 @@ display(pd.read_sql("SELECT * FROM product LIMIT 5", conn))
 display(pd.read_sql("SELECT * FROM customer LIMIT 5", conn))
 ```
 
-
 ### 1. Filtering and Selecting
 
-```py
+```python
 # Filter sales for a specific category
 electronics_sales_sql = """
     SELECT *
     FROM sales
-WHERE category = 'Electronics'
+    WHERE category = 'Electronics'
 """
 electronics_sales: pd.DataFrame = pd.read_sql(electronics_sales_sql, conn)
 print(f"Number of Electronics Sales: {len(electronics_sales)}")
 display(pd.read_sql(electronics_sales_sql + "LIMIT 5", conn))
+```
 
+```python
 # Filter for high value transactions (over $500)
 high_value_sales_sql = """
     SELECT *
@@ -331,7 +366,9 @@ high_value_sales_sql = """
 high_value_sales: pd.DataFrame = pd.read_sql(high_value_sales_sql, conn)
 print(f"Number of high-value Sales: {len(high_value_sales)}")
 display(pd.read_sql(high_value_sales_sql + "LIMIT 5", conn))
+```
 
+```python
 # Select specific columns
 sales_summary_sql = """
     SELECT date, category, sales_amount
@@ -342,10 +379,9 @@ print("Selected columns in Sales:")
 display(pd.read_sql(sales_summary_sql + "LIMIT 5", conn))
 ```
 
-
 ### 2. Grouping and Aggregation
 
-```py
+```python
 # Basic aggregation
 sales_stats_sql = """
     SELECT
@@ -362,7 +398,9 @@ sales_stats_sql = """
 """
 print(f"Sales Statistics: {len(pd.read_sql(sales_stats_sql, conn))}")
 display(pd.read_sql(sales_stats_sql, conn))
+```
 
+```python
 # Group by category and aggregate
 category_sales_sql = """
     SELECT
@@ -376,7 +414,9 @@ category_sales_sql = """
 """
 print(f"Category Sales Summary: {len(pd.read_sql(category_sales_sql, conn))}")
 display(pd.read_sql(category_sales_sql + "LIMIT 5", conn))
+```
 
+```python
 # Plot the results
 fig: go.Figure = px.bar(
     pd.read_sql(category_sales_sql, conn),
@@ -389,10 +429,9 @@ fig: go.Figure = px.bar(
 fig.show()
 ```
 
-
 ### 3. Joining
 
-```py
+```python
 # Join sales with product data
 sales_with_product_sql = """
     SELECT s.*, p.product_name, p.price
@@ -401,7 +440,9 @@ sales_with_product_sql = """
 """
 print(f"Sales with Product Data: {len(pd.read_sql(sales_with_product_sql, conn))}")
 display(pd.read_sql(sales_with_product_sql + "LIMIT 5", conn))
+```
 
+```python
 # Join with customer information to get a complete view
 complete_sales_sql = """
     SELECT
@@ -417,7 +458,9 @@ complete_sales_sql = """
 """
 print(f"Complete Sales Data: {len(pd.read_sql(complete_sales_sql, conn))}")
 display(pd.read_sql(complete_sales_sql + "LIMIT 5", conn))
+```
 
+```python
 # Calculate revenue and price difference
 revenue_comparison_sql = """
     SELECT
@@ -433,10 +476,9 @@ print(f"Revenue Comparison: {len(pd.read_sql(revenue_comparison_sql, conn))}")
 display(pd.read_sql(revenue_comparison_sql + "LIMIT 5", conn))
 ```
 
-
 ### 4. Window Functions
 
-```py
+```python
 # Time-based window function
 daily_sales_sql = """
     SELECT
@@ -448,7 +490,9 @@ daily_sales_sql = """
 """
 print(f"Daily Sales Data: {len(pd.read_sql(daily_sales_sql, conn))}")
 daily_sales: pd.DataFrame = pd.read_sql(daily_sales_sql + "LIMIT 5", conn)
+```
 
+```python
 # Window functions for lead and lag
 window_sql = """
     SELECT
@@ -465,7 +509,9 @@ window_sql = """
 window_df: pd.DataFrame = pd.read_sql(window_sql, conn)
 print(f"Window Functions: {len(window_df)}")
 display(pd.read_sql(window_sql + "LIMIT 5", conn))
+```
 
+```python
 # Plot time series with rolling average
 fig = go.Figure()
 fig.add_trace(
@@ -485,10 +531,9 @@ fig.update_layout(
 fig.show()
 ```
 
-
 ### 5. Ranking and Partitioning
 
-```py
+```python
 # Rank customers by total spending
 customer_spending_sql = """
     SELECT
@@ -505,7 +550,9 @@ customer_spending_sql = """
 """
 print(f"Customer Spending: {len(pd.read_sql(customer_spending_sql, conn))}")
 display(pd.read_sql(customer_spending_sql + "LIMIT 10", conn))
+```
 
+```python
 # Rank products by quantity sold
 product_popularity_sql = """
     SELECT
@@ -523,115 +570,114 @@ print(f"Product Popularity: {len(pd.read_sql(product_popularity_sql, conn))}")
 display(pd.read_sql(product_popularity_sql + "LIMIT 10", conn))
 ```
 
-
 ## PySpark
 
-```py
+```python
 
 ```
 
 
 ### Create
 
-```py
+```python
 
 ```
 
 
 ### 1. Filtering and Selecting
 
-```py
+```python
 
 ```
 
 
 ### 2. Grouping and Aggregation
 
-```py
+```python
 
 ```
 
 
 ### 3. Joining
 
-```py
+```python
 
 ```
 
 
 ### 4. Window Functions
 
-```py
+```python
 
 ```
 
 
 ### 5. Ranking and Partitioning
 
-```py
+```python
 
 ```
 
 
 ### 6. Sorting
 
-```py
+```python
 
 ```
 
 
 ## Polars
 
-```py
+```python
 
 ```
 
 
 ### Create
 
-```py
+```python
 
 ```
 
 
 ### 1. Filtering and Selecting
 
-```py
+```python
 
 ```
 
 
 ### 2. Grouping and Aggregation
 
-```py
+```python
 
 ```
 
 
 ### 3. Joining
 
-```py
+```python
 
 ```
 
 
 ### 4. Window Functions
 
-```py
+```python
 
 ```
 
 
 ### 5. Ranking and Partitioning
 
-```py
+```python
 
 ```
 
 
 ### 6. Sorting
 
-```py
+```python
 
 ```
 
