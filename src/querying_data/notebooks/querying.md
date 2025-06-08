@@ -28,7 +28,13 @@ import pandas as pd
 import polars as pl
 from plotly import express as px, graph_objects as go
 from plotly.subplots import make_subplots
-from pyspark.sql import SparkSession, functions as F
+from pyspark.sql import (
+    DataFrame as psDataFrame,
+    SparkSession,
+    Window,
+    functions as F,
+    types as T,
+)
 ```
 
 ### Constants
@@ -621,66 +627,268 @@ display(pd.read_sql(product_popularity_sql + "LIMIT 10", conn))
 
 ## PySpark
 
-```python
-
-```
-
 
 ### Create
 
 ```python
-
+spark: SparkSession = SparkSession.builder.appName("SalesAnalysis").getOrCreate()
 ```
 
+```python
+df_sales_ps: psDataFrame = spark.createDataFrame(df_sales_pd)
+df_product_ps: psDataFrame = spark.createDataFrame(df_product_pd)
+df_customer_ps: psDataFrame = spark.createDataFrame(df_customer_pd)
+```
 
 ### 1. Filtering and Selecting
 
 ```python
-
+# Filter sales data for specific category
+electronics_sales: psDataFrame = df_sales_ps.filter(
+    df_sales_ps["category"] == "Electronics"
+)
+print(f"Number of Electronics Sales: {electronics_sales.count()}")
+electronics_sales.show(10)
 ```
 
+```python
+# Filter for high value transactions (over $500)
+high_value_sales: psDataFrame = df_sales_ps.filter("sales_amount > 500")
+print(f"Number of high-value Sales: {high_value_sales.count()}")
+high_value_sales.show(10)
+```
+
+```python
+# Select specific columns
+sales_summary: psDataFrame = df_sales_ps.select("date", "category", "sales_amount")
+print(f"Sales Summary DataFrame: {sales_summary.count()}")
+sales_summary.show(10)
+```
 
 ### 2. Grouping and Aggregation
 
 ```python
-
+# Basic aggregation
+sales_stats: psDataFrame = df_sales_ps.agg(
+    F.sum("sales_amount").alias("sales_sum"),
+    F.avg("sales_amount").alias("sales_mean"),
+    F.expr("MIN(sales_amount) AS sales_min"),
+    F.expr("MAX(sales_amount) AS sales_max"),
+    F.count("*").alias("sales_count"),
+    F.expr("SUM(quantity) AS quantity_sum"),
+    F.expr("AVG(quantity) AS quantity_mean"),
+    F.min("quantity").alias("quantity_min"),
+    F.max("quantity").alias("quantity_max"),
+)
+print(f"Sales Statistics: {sales_stats.count()}")
+sales_stats.show()
 ```
 
+```python
+# Group by category and aggregate
+category_sales: psDataFrame = df_sales_ps.groupBy("category").agg(
+    F.sum("sales_amount").alias("total_sales"),
+    F.avg("sales_amount").alias("average_sales"),
+    F.count("*").alias("transaction_count"),
+    F.sum("quantity").alias("total_quantity"),
+)
+print(f"Category Sales Summary: {category_sales.count()}")
+category_sales.show()
+```
+
+```python
+# Rename columns for clarity
+category_sales = category_sales.withColumnsRenamed(
+    {
+        "total_sales": "Total Sales",
+        "average_sales": "Average Sales",
+        "transaction_count": "Transaction Count",
+        "total_quantity": "Total Quantity",
+    }
+)
+print(f"Renamed Category Sales Summary: {category_sales.count()}")
+category_sales.show()
+```
+
+```python
+# Convert to pandas for plotting with plotly
+category_sales_pd: pd.DataFrame = category_sales.toPandas()
+fig: go.Figure = px.bar(
+    category_sales_pd,
+    x="category",
+    y="Total Sales",
+    title="Total Sales by Category",
+    text="Transaction Count",
+    labels={"Total Sales": "Total Sales ($)", "category": "Product Category"},
+)
+fig.show()
+```
 
 ### 3. Joining
 
 ```python
-
+# Join sales with product data
+sales_with_product: psDataFrame = df_sales_ps.join(
+    other=df_product_ps.select("product_id", "product_name", "price"),
+    on="product_id",
+    how="left",
+)
+print(f"Sales with Product Information: {sales_with_product.count()}")
+sales_with_product.show(10)
 ```
 
+```python
+# Jjoin with customer information to get a complete view
+complete_sales: psDataFrame = sales_with_product.alias("s").join(
+    other=df_customer_ps.select("customer_id", "customer_name", "city", "state").alias(
+        "c"
+    ),
+    on="customer_id",
+    how="left",
+)
+print(f"Complete Sales Data with Customer Information: {complete_sales.count()}")
+complete_sales.show(10)
+```
+
+```python
+# Calculate revenue (price * quantity) and compare with sales amount
+complete_sales = complete_sales.withColumns(
+    {
+        "calculated_revenue": complete_sales["price"] * complete_sales["quantity"],
+        "price_difference": F.expr("sales_amount - (price * quantity)"),
+    },
+)
+print(
+    f"Complete Sales Data with Calculated Revenue and Price Difference: {complete_sales.count()}"
+)
+complete_sales.select(
+    "sales_amount", "price", "quantity", "calculated_revenue", "price_difference"
+).show(10)
+```
 
 ### 4. Window Functions
 
 ```python
-
+# Convert date column to date type if not already
+df_sales_ps = df_sales_ps.withColumn("date", F.to_date(df_sales_ps["date"]))
 ```
 
+```python
+# Time-based window function
+daily_sales: psDataFrame = (
+    df_sales_ps.groupBy("date")
+    .agg(
+        F.sum("sales_amount").alias("total_sales"),
+    )
+    .orderBy("date")
+)
+print(f"Daily Sales Summary: {daily_sales.count()}")
+daily_sales.show(10)
+```
+
+```python
+# Define a window specification for lead/lag functions
+window_spec = Window.orderBy("date")
+
+# Calculate lead and lag
+daily_sales = daily_sales.withColumns(
+    {
+        "previous_day_sales": F.lag("total_sales").over(window_spec),
+        "next_day_sales": F.expr("LEAD(total_sales) OVER (ORDER BY date)"),
+    },
+)
+print(f"Daily Sales with Lead and Lag: {daily_sales.count()}")
+daily_sales.show(10)
+```
+
+```python
+# Calculate day-over-day change
+daily_sales = daily_sales.withColumns(
+    {
+        "day_over_day_change": F.expr("total_sales - previous_day_sales"),
+        "pct_change": (F.expr("total_sales / previous_day_sales - 1") * 100).alias(
+            "pct_change"
+        ),
+    }
+)
+print(f"Daily Sales with Day-over-Day Change: {daily_sales.count()}")
+daily_sales.show(10)
+```
+
+```python
+# Calculate 7-day moving average
+daily_sales = daily_sales.withColumns(
+    {
+        "7d_moving_avg": F.avg("total_sales").over(
+            Window.orderBy("date").rowsBetween(-6, 0)
+        ),
+        "7d_rolling_avg": F.expr(
+            "AVG(total_sales) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)"
+        ),
+    }
+)
+print(f"Daily Sales with 7-Day Moving Average: {daily_sales.count()}")
+daily_sales.show(10)
+```
+
+```python
+# Plot time series with rolling average
+fig = (
+    go.Figure()
+    .add_trace(
+        go.Scatter(
+            x=daily_sales.toPandas()["date"],
+            y=daily_sales.toPandas()["total_sales"],
+            mode="lines",
+            name="Daily Sales",
+        )
+    )
+    .add_trace(
+        go.Scatter(
+            x=daily_sales.toPandas()["date"],
+            y=daily_sales.toPandas()["7d_moving_avg"],
+            mode="lines",
+            name="7-Day Moving Average",
+            line=dict(width=3),
+        ),
+    )
+    .update_layout(
+        title="Daily Sales with 7-Day Moving Average",
+        xaxis_title="Date",
+        yaxis_title="Sales Amount ($)",
+    )
+)
+fig.show()
+```
 
 ### 5. Ranking and Partitioning
 
 ```python
-
+# Rank customers by total spending
+customer_spending: psDataFrame = (
+    df_sales_ps.groupBy("customer_id")
+    .agg(F.sum("sales_amount").alias("total_spending"))
+    .withColumn("rank", F.dense_rank().over(Window.orderBy(F.desc("total_spending"))))
+    .orderBy("rank")
+)
+print(f"Customer Spending Summary: {customer_spending.count()}")
+customer_spending.show(10)
 ```
-
-
-### 6. Sorting
 
 ```python
-
+# Randk products by quantity sold
+product_popularity: psDataFrame = (
+    df_sales_ps.groupBy("product_id")
+    .agg(F.sum("quantity").alias("total_quantity"))
+    .withColumn("rank", F.expr("DENSE_RANK() OVER (ORDER BY total_quantity DESC)"))
+    .orderBy("rank")
+)
+print(f"Product Popularity Summary: {product_popularity.count()}")
+product_popularity.show(10)
 ```
-
 
 ## Polars
 
-```python
-
-```
-
 
 ### Create
 
@@ -688,13 +896,11 @@ display(pd.read_sql(product_popularity_sql + "LIMIT 10", conn))
 
 ```
 
-
 ### 1. Filtering and Selecting
 
 ```python
 
 ```
-
 
 ### 2. Grouping and Aggregation
 
@@ -702,13 +908,11 @@ display(pd.read_sql(product_popularity_sql + "LIMIT 10", conn))
 
 ```
 
-
 ### 3. Joining
 
 ```python
 
 ```
-
 
 ### 4. Window Functions
 
@@ -716,13 +920,11 @@ display(pd.read_sql(product_popularity_sql + "LIMIT 10", conn))
 
 ```
 
-
 ### 5. Ranking and Partitioning
 
 ```python
 
 ```
-
 
 ### 6. Sorting
 
@@ -731,3 +933,7 @@ display(pd.read_sql(product_popularity_sql + "LIMIT 10", conn))
 ```
 
 ## Conclusion
+
+```python
+
+```
