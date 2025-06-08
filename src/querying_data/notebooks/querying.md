@@ -97,9 +97,17 @@ df_customer_pd = pd.DataFrame(customer_data)
 ```
 
 ```python
-print("Pandas DataFrame:")
+print(f"Sales DataFrame: {len(df_sales_pd)}")
 display(df_sales_pd.head(10))
+```
+
+```python
+print(f"Product DataFrame: {len(df_product_pd)}")
 display(df_product_pd.head(10))
+```
+
+```python
+print(f"Customer DataFrame: {len(df_customer_pd)}")
 display(df_customer_pd.head(10))
 ```
 
@@ -122,6 +130,7 @@ display(high_value_sales.head())
 ```python
 # Select specific columns
 sales_summary: pd.DataFrame = df_sales_pd[["date", "category", "sales_amount"]]
+print(f"Sales Summary DataFrame: {len(sales_summary)}")
 display(sales_summary.head())
 ```
 
@@ -135,6 +144,7 @@ sales_stats: pd.DataFrame = df_sales_pd.agg(
         "quantity": ["sum", "mean", "min", "max"],
     }
 )
+print(f"Sales Statistics: {len(sales_stats)}")
 display(sales_stats)
 ```
 
@@ -146,19 +156,20 @@ category_sales: pd.DataFrame = df_sales_pd.groupby("category").agg(
         "quantity": "sum",
     }
 )
+print(f"Category Sales Summary: {len(category_sales)}")
 display(category_sales)
 ```
 
 ```python
 # Rename columns for clarity
-category_sales_columns = [
+category_sales.columns = [
     "total_sales",
     "average_sales",
     "transaction_count",
     "total_quantity",
 ]
-print("Category Sales Summary:")
-display(category_sales[category_sales_columns])
+print(f"Renamed Category Sales Summary: {len(category_sales)}")
+display(df_sales_pd.head(10))
 ```
 
 ```python
@@ -179,11 +190,12 @@ fig.show()
 ```python
 # Join sales with product data
 sales_with_product: pd.DataFrame = pd.merge(
-    df_product_pd,
-    df_product_id[["product_id", "product_name", "price"]],
+    df_sales_pd,
+    df_product_pd[["product_id", "product_name", "price"]],
     on="product_id",
     how="left",
 )
+print(f"Sales with Product Information: {len(sales_with_product)}")
 display(sales_with_product.head())
 ```
 
@@ -195,6 +207,7 @@ complete_sales: pd.DataFrame = pd.merge(
     on="customer_id",
     how="left",
 )
+print(f"Complete Sales Data with Customer Information: {len(complete_sales)}")
 display(complete_sales.head())
 ```
 
@@ -205,6 +218,9 @@ complete_sales["calculated_revenue"] = (
 )
 complete_sales["price_difference"] = (
     complete_sales["sales_amount"] - complete_sales["calculated_revenue"]
+)
+print(
+    f"Complete Sales Data with Calculated Revenue and Price Difference: {len(complete_sales)}"
 )
 display(
     complete_sales[
@@ -219,9 +235,13 @@ display(
 # Time-based window function
 df_sales_pd["date"] = pd.to_datetime(df_sales_pd["date"])  # Ensure date type
 daily_sales: pd.DataFrame = (
-    df_sales_pd.groupby(df_sales_pd["date"].dt.date).sum().reset_index()
+    df_sales_pd.groupby(df_sales_pd["date"].dt.date)["sales_amount"]
+    .sum()
+    .reset_index()
+    .sort_values("date")
 )
-daily_sales = daily_sales.sort_values("date")
+print(f"Daily Sales Summary: {len(daily_sales)}")
+display(daily_sales.head())
 ```
 
 ```python
@@ -229,12 +249,16 @@ daily_sales = daily_sales.sort_values("date")
 daily_sales["7d_moving_avg"] = (
     daily_sales["sales_amount"].rolling(window=7, min_periods=1).mean()
 )
+print(f"Daily Sales with 7-Day Moving Average: {len(daily_sales)}")
+display(daily_sales.head())
 ```
 
 ```python
 # Calculate lag and lead
 daily_sales["previous_day_sales"] = daily_sales["sales_amount"].shift(1)
 daily_sales["next_day_sales"] = daily_sales["sales_amount"].shift(-1)
+print(f"Daily Sales with Lag and Lead: {len(daily_sales)}")
+display(daily_sales.head())
 ```
 
 ```python
@@ -243,33 +267,36 @@ daily_sales["day_over_day_change"] = (
     daily_sales["sales_amount"].pct_change() - daily_sales["previous_day_sales"]
 )
 daily_sales["pct_change"] = daily_sales["sales_amount"].pct_change() * 100
+print(f"Daily Sales with Day-over-Day Change: {len(daily_sales)}")
 display(daily_sales.head())
 ```
 
 ```python
 # Plot time series with rolling average
-fig = go.Figure()
-fig.add_trace(
-    go.Scatter(
-        x=daily_sales["date"],
-        y=daily_sales["sales_amount"],
-        mode="lines",
-        name="Daily Sales",
+fig = (
+    go.Figure()
+    .add_trace(
+        go.Scatter(
+            x=daily_sales["date"],
+            y=daily_sales["sales_amount"],
+            mode="lines",
+            name="Daily Sales",
+        )
     )
-)
-fig.add_trace(
-    go.Scatter(
-        x=daily_sales["date"],
-        y=daily_sales["7d_moving_avg"],
-        mode="lines",
-        name="7-Day Moving Average",
-    ),
-    line=dict(width=3),
-)
-fig.update_layout(
-    title="Daily Sales with 7-Day Moving Average",
-    xaxis_title="Date",
-    yaxis_title="Sales Amount ($)",
+    .add_trace(
+        go.Scatter(
+            x=daily_sales["date"],
+            y=daily_sales["7d_moving_avg"],
+            mode="lines",
+            name="7-Day Moving Average",
+            line=dict(width=3),
+        ),
+    )
+    .update_layout(
+        title="Daily Sales with 7-Day Moving Average",
+        xaxis_title="Date",
+        yaxis_title="Sales Amount ($)",
+    )
 )
 fig.show()
 ```
@@ -285,6 +312,8 @@ customer_spending["rank"] = customer_spending["sales_amount"].rank(
     method="dense", ascending=False
 )
 customer_spending = customer_spending.sort_values("rank")
+print(f"Customer Spending Summary: {len(customer_spending)}")
+display(customer_spending.head(10))
 ```
 
 ```python
@@ -295,6 +324,7 @@ top_customers: pd.DataFrame = pd.merge(
     on="customer_id",
     how="left",
 )
+print(f"Top Customers Summary: {len(top_customers)}")
 display(top_customers.head(10))
 ```
 
@@ -303,10 +333,12 @@ display(top_customers.head(10))
 product_popularity: pd.DataFrame = (
     df_sales_pd.groupby("product_id")["quantity"].sum().reset_index()
 )
-product_popularity["rank"] = product_quantity["quantity"].rank(
+product_popularity["rank"] = product_popularity["quantity"].rank(
     method="dense", ascending=False
 )
-product_popularity = product_quantity.sort_values("rank")
+product_popularity = product_popularity.sort_values("rank")
+print(f"Product Popularity Summary: {len(product_popularity)}")
+display(product_popularity.head(10))
 ```
 
 ```python
@@ -317,6 +349,7 @@ top_products: pd.DataFrame = pd.merge(
     on="product_id",
     how="left",
 )
+print(f"Top Products Summary: {len(top_products)}")
 display(top_products.head(10))
 ```
 
@@ -327,18 +360,24 @@ display(top_products.head(10))
 
 ```python
 # Creates SQLite database and tables
-conn: sqlite.Connection = sqlite3.connect(":memory:")
-
+conn: sqlite3.Connection = sqlite3.connect(":memory:")
 df_sales_pd.to_sql("sales", conn, index=False, if_exists="replace")
 df_product_pd.to_sql("product", conn, index=False, if_exists="replace")
 df_customer_pd.to_sql("customer", conn, index=False, if_exists="replace")
 ```
 
 ```python
-# Verify SQL Connection
-print("SQL Data:")
+print("Sales Table:")
 display(pd.read_sql("SELECT * FROM sales LIMIT 5", conn))
+```
+
+```python
+print("Product Table:")
 display(pd.read_sql("SELECT * FROM product LIMIT 5", conn))
+```
+
+```python
+print("Customer Table:")
 display(pd.read_sql("SELECT * FROM customer LIMIT 5", conn))
 ```
 
@@ -375,7 +414,7 @@ sales_summary_sql = """
     FROM sales
 """
 sales_summary: pd.DataFrame = pd.read_sql(sales_summary_sql, conn)
-print("Selected columns in Sales:")
+print(f"Selected columns in Sales: {len(sales_summary)}")
 display(pd.read_sql(sales_summary_sql + "LIMIT 5", conn))
 ```
 
@@ -489,7 +528,7 @@ daily_sales_sql = """
     ORDER BY date
 """
 print(f"Daily Sales Data: {len(pd.read_sql(daily_sales_sql, conn))}")
-daily_sales: pd.DataFrame = pd.read_sql(daily_sales_sql + "LIMIT 5", conn)
+display(pd.read_sql(daily_sales_sql + "LIMIT 5", conn))
 ```
 
 ```python
@@ -498,10 +537,10 @@ window_sql = """
     SELECT
         date AS sale_date,
         SUM(sales_amount) AS sales_amount,
-        SUM(sales_amount) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS rolling_7d_avg,
+        AVG(sales_amount) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS rolling_7d_avg,
         LAG(SUM(sales_amount)) OVER (ORDER BY date) AS previous_day_sales,
         LEAD(SUM(sales_amount)) OVER (ORDER BY date) AS next_day_sales,
-        SUM(sales_amount) - LAG(SUM(sales_amount)) OVER (ORDER BY date) AS day_over_day_change,
+        SUM(sales_amount) - LAG(SUM(sales_amount)) OVER (ORDER BY date) AS day_over_day_change
     FROM sales
     GROUP BY date
     ORDER BY date
@@ -513,20 +552,30 @@ display(pd.read_sql(window_sql + "LIMIT 5", conn))
 
 ```python
 # Plot time series with rolling average
-fig = go.Figure()
-fig.add_trace(
-    go.Scatter(
-        x=window_df["sale_date"],
-        y=window_df["7d_moving_avg"],
-        mode="lines",
-        name="7-Day Moving Average",
-        line=dict(width=3),
+fig = (
+    go.Figure()
+    .add_trace(
+        go.Scatter(
+            x=window_df["sale_date"],
+            y=window_df["sales_amount"],
+            mode="lines",
+            name="Daily Sales",
+        )
     )
-)
-fig.update_layout(
-    title="Daily Sales with 7-Day Moving Average",
-    xaxis_title="Date",
-    yaxis_title="Sales Amount ($)",
+    .add_trace(
+        go.Scatter(
+            x=window_df["sale_date"],
+            y=window_df["rolling_7d_avg"],
+            mode="lines",
+            name="7-Day Moving Average",
+            line=dict(width=3),
+        )
+    )
+    .update_layout(
+        title="Daily Sales with 7-Day Moving Average",
+        xaxis_title="Date",
+        yaxis_title="Sales Amount ($)",
+    )
 )
 fig.show()
 ```
