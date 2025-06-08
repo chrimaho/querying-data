@@ -19,11 +19,10 @@ Before we start querying data, we need to set up our environment. This includes 
 ### Imports
 
 ```python
-# Import required libraries
-# ## Python StdLib Imports ----
+# Python StdLib Imports
 import sqlite3
 
-# ## Python Third Party Imports ----
+# Python Third Party Imports
 import numpy as np
 import pandas as pd
 import polars as pl
@@ -63,8 +62,8 @@ sales_data: dict[str, str] = {
 ```python
 # Create product dimension table
 product_data: dict[str, str] = {
-    "product_id": np.arange(1, 50),
-    "product_name": [f"Product {i}" for i in range(1, 50)],
+    "product_id": np.arange(1, 51),
+    "product_name": [f"Product {i}" for i in range(1, 51)],
     "price": np.random.uniform(10, 500, 50).round(2),
     "category": np.random.choice(
         ["Electronics", "Clothing", "Food", "Books", "Home"], 50
@@ -76,8 +75,8 @@ product_data: dict[str, str] = {
 ```python
 # Create customer dimension table
 customer_data: dict[str, str] = {
-    "customer_id": np.arange(1, 100),
-    "customer_name": [f"Customer {i}" for i in range(1, 100)],
+    "customer_id": np.arange(1, 101),
+    "customer_name": [f"Customer {i}" for i in range(1, 101)],
     "city": np.random.choice(
         ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix"], 100
     ),
@@ -99,9 +98,9 @@ df_customer_pd = pd.DataFrame(customer_data)
 
 ```python
 print("Pandas DataFrame:")
-print(df_sales_pd.head(10))
-print(df_product_pd.head(10))
-print(df_customer_pd.head(10))
+display(df_sales_pd.head(10))
+display(df_product_pd.head(10))
+display(df_customer_pd.head(10))
 ```
 
 ### 1. Filtering and Selecting
@@ -152,13 +151,14 @@ display(category_sales)
 
 ```python
 # Rename columns for clarity
-category_sales.columns = [
+category_sales_columns = [
     "total_sales",
     "average_sales",
     "transaction_count",
     "total_quantity",
 ]
-display("Category Sales Summary:")
+print("Category Sales Summary:")
+display(category_sales[category_sales_columns])
 ```
 
 ```python
