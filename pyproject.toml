@@ -33,14 +33,12 @@ classifiers = [
 ]
 requires-python = ">=3.9,<4.0"
 dependencies = [
-    # "typeguard==4.*",
-    # "more-itertools==10.*",
-    # "toolbox-python==1.*",
     "numpy==2.*",
     "pandas==2.*",
     "polars==1.*",
     "pyspark==3.*",
     "plotly==6.*",
+    "setuptools",  # <-- Required because pyspark 3.5 still uses distutils
 ]
 
 [project.urls]
@@ -62,7 +60,7 @@ dev = [
     "pyupgrade==3.*",
     "ipykernel==6.*",
     "nbformat==5.*",
-    "jupytext==1.*",
+    "jupytext==1.*",  # <-- Used to convert notebooks to markdown
 ]
 docs = [
     "black==25.*",
