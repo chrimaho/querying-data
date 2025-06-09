@@ -1,7 +1,7 @@
-# Querying Data Blog Article
+# Data Querying for Data Scientists
 
 
-### Querying Data: A Comprehensive Guide with Pandas, SQL, PySpark, and Polars
+### A Comprehensive Guide of using Pandas, SQL, PySpark, and Polars for Data Manipulation Techniques, with Practical Examples and Visualisations
 
 
 Working as a Data Scientist or Data Engineer often involves querying data from various sources. There are many tools and libraries available to perform these tasks, each with its own strengths and weaknesses. Also, there are many different ways to achieve similar results, depending on the tool or library used. It's important to be familiar with these different methods to choose the best one for your specific use case.
@@ -640,6 +640,21 @@ df_product_ps: psDataFrame = spark.createDataFrame(df_product_pd)
 df_customer_ps: psDataFrame = spark.createDataFrame(df_customer_pd)
 ```
 
+```python
+print(f"Sales DataFrame: {df_sales_ps.count()}")
+df_sales_ps.show(10)
+```
+
+```python
+print(f"Product DataFrame: {df_product_ps.count()}")
+df_product_ps.show(10)
+```
+
+```python
+print(f"Customer DataFrame: {df_customer_ps.count()}")
+df_customer_ps.show(10)
+```
+
 ### 1. Filtering and Selecting
 
 ```python
@@ -738,7 +753,7 @@ sales_with_product.show(10)
 ```
 
 ```python
-# Jjoin with customer information to get a complete view
+# Join with customer information to get a complete view
 complete_sales: psDataFrame = sales_with_product.alias("s").join(
     other=df_customer_ps.select("customer_id", "customer_name", "city", "state").alias(
         "c"
@@ -876,7 +891,7 @@ customer_spending.show(10)
 ```
 
 ```python
-# Randk products by quantity sold
+# Rank products by quantity sold
 product_popularity: psDataFrame = (
     df_sales_ps.groupBy("product_id")
     .agg(F.sum("quantity").alias("total_quantity"))
@@ -893,43 +908,257 @@ product_popularity.show(10)
 ### Create
 
 ```python
+df_sales_pl: pl.DataFrame = pl.DataFrame(sales_data)
+df_product_pl: pl.DataFrame = pl.DataFrame(product_data)
+df_customer_pl: pl.DataFrame = pl.DataFrame(customer_data)
+```
 
+```python
+print(f"Sales DataFrame: {df_sales_pl.shape[0]}")
+display(df_sales_pl.head(10))
+```
+
+```python
+print(f"Product DataFrame: {df_product_pl.shape[0]}")
+display(df_product_pl.head(10))
+```
+
+```python
+print(f"Customer DataFrame: {df_customer_pl.shape[0]}")
+display(df_customer_pl.head(10))
 ```
 
 ### 1. Filtering and Selecting
 
 ```python
+# Filter sales data for specific category
+electronics_sales = df_sales_pl.filter(df_sales_pl["category"] == "Electronics")
+print(f"Number of Electronics Sales: {len(electronics_sales)}")
+display(electronics_sales.head(10))
+```
 
+```python
+# Filter for high value transactions (over $500)
+high_value_sales = df_sales_pl.filter(df_sales_pl["sales_amount"] > 500)
+print(f"Number of high-value Sales: {len(high_value_sales)}")
+display(high_value_sales.head(10))
+```
+
+```python
+# Select specific columns
+sales_summary = df_sales_pl.select(["date", "category", "sales_amount"])
+print(f"Sales Summary DataFrame: {len(sales_summary)}")
+display(sales_summary.head(10))
 ```
 
 ### 2. Grouping and Aggregation
 
 ```python
+# Basic aggregation
+sales_stats = df_sales_pl.select(
+    pl.col("sales_amount").sum().alias("sales_sum"),
+    pl.col("sales_amount").mean().alias("sales_mean"),
+    pl.col("sales_amount").min().alias("sales_min"),
+    pl.col("sales_amount").max().alias("sales_max"),
+    pl.col("quantity").sum().alias("quantity_sum"),
+    pl.col("quantity").mean().alias("quantity_mean"),
+    pl.col("quantity").min().alias("quantity_min"),
+    pl.col("quantity").max().alias("quantity_max"),
+)
+print(f"Sales Statistics: {len(sales_stats)}")
+display(sales_stats)
+```
 
+```python
+# Group by category and aggregate
+category_sales = df_sales_pl.group_by("category").agg(
+    pl.col("sales_amount").sum().alias("total_sales"),
+    pl.col("sales_amount").mean().alias("average_sales"),
+    pl.col("sales_amount").count().alias("transaction_count"),
+    pl.col("quantity").sum().alias("total_quantity"),
+)
+print(f"Category Sales Summary: {len(category_sales)}")
+display(category_sales.head(10))
+```
+
+```python
+# Rename columns for clarity
+category_sales = category_sales.rename(
+    {
+        "total_sales": "Total Sales",
+        "average_sales": "Average Sales",
+        "transaction_count": "Transaction Count",
+        "total_quantity": "Total Quantity",
+    }
+)
+print(f"Renamed Category Sales Summary: {len(category_sales)}")
+display(category_sales.head(10))
+```
+
+```python
+# Plot the results
+fig: go.Figure = px.bar(
+    category_sales,
+    x="category",
+    y="Total Sales",
+    title="Total Sales by Category",
+    text="Transaction Count",
+    labels={"Total Sales": "Total Sales ($)", "category": "Product Category"},
+)
+fig.show()
 ```
 
 ### 3. Joining
 
 ```python
+# Join sales with product data
+sales_with_product = df_sales_pl.join(
+    df_product_pl.select(["product_id", "product_name", "price"]),
+    on="product_id",
+    how="left",
+)
+print(f"Sales with Product Information: {len(sales_with_product)}")
+display(sales_with_product.head(10))
+```
 
+```python
+# Join with customer information to get a complete view
+complete_sales = sales_with_product.join(
+    df_customer_pl.select(["customer_id", "customer_name", "city", "state"]),
+    on="customer_id",
+    how="left",
+)
+print(f"Complete Sales Data with Customer Information: {len(complete_sales)}")
+display(complete_sales.head(10))
+```
+
+```python
+# Calculate revenue (price * quantity) and compare with sales amount
+complete_sales = complete_sales.with_columns(
+    (pl.col("price") * pl.col("quantity")).alias("calculated_revenue"),
+    (pl.col("sales_amount") - (pl.col("price") * pl.col("quantity"))).alias(
+        "price_difference"
+    ),
+)
+print(
+    f"Complete Sales Data with Calculated Revenue and Price Difference: {len(complete_sales)}"
+)
+display(
+    complete_sales.select(
+        ["sales_amount", "price", "quantity", "calculated_revenue", "price_difference"]
+    ).head(10)
+)
 ```
 
 ### 4. Window Functions
 
 ```python
+# Convert date column to date type if not already
+df_sales_pl = df_sales_pl.with_columns(pl.col("date").cast(pl.Date))
+```
 
+```python
+daily_sales = (
+    df_sales_pl.group_by("date")
+    .agg(
+        pl.col("sales_amount").sum().alias("total_sales"),
+    )
+    .sort("date")
+)
+print(f"Daily Sales Summary: {len(daily_sales)}")
+display(daily_sales.head(10))
+```
+
+```python
+# Calculate lead and lag
+daily_sales = daily_sales.with_columns(
+    pl.col("total_sales").shift(1).alias("previous_day_sales"),
+    pl.col("total_sales").shift(-1).alias("next_day_sales"),
+)
+print(f"Daily Sales with Lead and Lag: {len(daily_sales)}")
+display(daily_sales.head(10))
+```
+
+```python
+# Calculate day-over-day change
+daily_sales = daily_sales.with_columns(
+    (pl.col("total_sales") - pl.col("previous_day_sales")).alias("day_over_day_change"),
+    (pl.col("total_sales") / pl.col("previous_day_sales") - 1).alias("pct_change")
+    * 100,
+)
+print(f"Daily Sales with Day-over-Day Change: {len(daily_sales)}")
+display(daily_sales.head(10))
+```
+
+```python
+# Calculate 7-day moving average
+daily_sales = daily_sales.with_columns(
+    pl.col("total_sales")
+    .rolling_mean(window_size=7, min_periods=1)
+    .alias("7d_moving_avg"),
+)
+print(f"Daily Sales with 7-Day Moving Average: {len(daily_sales)}")
+display(daily_sales.head(10))
+```
+
+```python
+# Plot time series with rolling average
+fig = (
+    go.Figure()
+    .add_trace(
+        go.Scatter(
+            x=daily_sales["date"].to_list(),
+            y=daily_sales["total_sales"].to_list(),
+            mode="lines",
+            name="Daily Sales",
+        )
+    )
+    .add_trace(
+        go.Scatter(
+            x=daily_sales["date"].to_list(),
+            y=daily_sales["7d_moving_avg"].to_list(),
+            mode="lines",
+            name="7-Day Moving Average",
+            line=dict(width=3),
+        )
+    )
+    .update_layout(
+        title="Daily Sales with 7-Day Moving Average",
+        xaxis_title="Date",
+        yaxis_title="Sales Amount ($)",
+    )
+)
+fig.show()
 ```
 
 ### 5. Ranking and Partitioning
 
 ```python
-
+# Rank customers by total spending
+customer_spending = (
+    df_sales_pl.group_by("customer_id")
+    .agg(pl.col("sales_amount").sum().alias("total_spending"))
+    .with_columns(
+        pl.col("total_spending").rank(method="dense", descending=True).alias("rank")
+    )
+    .sort("rank")
+)
+print(f"Customer Spending Summary: {len(customer_spending)}")
+display(customer_spending.head(10))
 ```
 
-### 6. Sorting
-
 ```python
-
+# Rank products by quantity sold
+product_popularity = (
+    df_sales_pl.group_by("product_id")
+    .agg(pl.col("quantity").sum().alias("total_quantity"))
+    .with_columns(
+        pl.col("total_quantity").rank(method="dense", descending=True).alias("rank")
+    )
+    .sort("rank")
+)
+print(f"Product Popularity Summary: {len(product_popularity)}")
+display(product_popularity.head(10))
 ```
 
 ## Conclusion
